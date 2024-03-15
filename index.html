@@ -1,0 +1,206 @@
+<html>
+<head>
+    <title>Knotwork</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {margin: 0;}
+        div#button-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 70px;
+        }
+        button#erase {
+            border: 2px solid #005700;
+            background-color: #00aa00;
+            border-radius: 4px;
+            color: black;
+            font-size: 2em;
+            width: 50%;
+        }
+        div#canvas-container {
+            width: 100vw;
+            height: calc(100vh - 70px);
+            display: flex;
+            /* align-items: center; */
+            justify-content: center;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <div id="button-container"><button id="erase">erase</button></div>
+    <div id="canvas-container"></div>
+    <script>
+        const SIZE = 17;
+        let DRAWING = true;
+        let MOUSEDOWN = false;
+        const WIDTH = Math.floor(window.innerWidth / SIZE);
+        const HEIGHT = Math.floor(document.getElementById('canvas-container').offsetHeight / SIZE);
+        //Math.floor((window.innerHeight - 70) / SIZE) - 1;
+        const board = (() => {
+            let b = [];
+            for (let h = 0; h < HEIGHT; h++) {
+                let row = [];
+                for (let w = 0; w < WIDTH; w++) {
+                    row.push(false);
+                }
+                b.push(row);
+            }
+            return b;
+        })();
+        
+        const images = {};
+        const goes = {
+            up:    n => n.includes('1') && n.includes('2'),
+            right: n => n.includes('3') && n.includes('4'),
+            down:  n => n.includes('5') && n.includes('6'),
+            left:  n => n.includes('7') && n.includes('8'),
+        };
+        const filenames = [
+            'ck-13-25-46',    'ck-16-25-38-47', 'ck-17-28',       'ck-35-46',
+            'ck-37-48',       'ck-12',          'ck-35-47-68',    'ck-56',
+            'ck-16-28-57',    'ck-13-24',       'ck-15-26',       'ck-17-24-38',   
+            'ck-78',          'ck-34',          'ck-57-68',
+        ];
+
+        let theCanvas = document.createElement('canvas');
+        theCanvas.width = WIDTH * SIZE;
+        theCanvas.height = HEIGHT * SIZE;
+        document.getElementById('canvas-container').appendChild(theCanvas);
+        let theContext = theCanvas.getContext('2d');
+        let theButton = document.getElementById('erase');
+
+        Promise.all(filenames.map(f => {
+            return loadImage(`/${f}.png`);
+        })).then(img => {
+            const l = img.length;
+            for (let i = 0; i < l; i++) {
+                // const x = (i % 12) * 17;
+                // const y = Math.floor((i * 17) / 204) * 17;
+                // theContext.drawImage(img[i], x, y);
+                images[filenames[i]] = img[i];
+            }
+        }).then(() => {
+            theCanvas.addEventListener('mouseup', (e) => {
+                MOUSEDOWN = false;
+            });
+            theCanvas.addEventListener('mouseout', (e) => {
+                MOUSEDOWN = false;
+            });
+            theCanvas.addEventListener('touchend', (e) => {
+                theCanvas.dispatchEvent(new MouseEvent('mouseup', {}));
+            });
+
+
+
+            theCanvas.addEventListener('mousedown', (e) => {
+                MOUSEDOWN = true;
+
+                const rect = theCanvas.getBoundingClientRect();
+                // const x = Math.floor(e.offsetX / SIZE);
+                // const y = Math.floor(e.offsetY / SIZE);
+                const x = Math.floor((e.clientX - rect.left) / SIZE);
+                const y = Math.floor((e.clientY - rect.top) / SIZE);
+
+                handleEvent(x, y);
+            });
+            theCanvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+
+                theCanvas.dispatchEvent(new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                }));
+                e.preventDefault();
+            }, false);
+
+
+
+            theCanvas.addEventListener('mousemove', (e) => {
+                if (!MOUSEDOWN) return;
+
+                const rect = theCanvas.getBoundingClientRect();
+
+                const x = Math.floor((e.clientX - rect.left) / SIZE);
+                const y = Math.floor((e.clientY - rect.top) / SIZE);
+
+                handleEvent(x, y);
+            });
+            theCanvas.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+
+                theCanvas.dispatchEvent(new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                }));
+                e.preventDefault();
+            }, false);
+            theButton.addEventListener('click', () => {
+                DRAWING = !DRAWING;
+                theButton.innerHTML = DRAWING ? 'erase' : 'draw';
+            })
+        })
+
+        function handleEvent(x, y) {
+
+            if (!board[y] || board[y][x] !== !DRAWING) return;
+
+            board[y][x] = DRAWING;
+            drawKnotsNear(x, y)
+        }
+
+        function drawKnotsNear(x, y) {
+            const up = y > 0;
+            const down = y < HEIGHT - 1;
+            const left = x > 0;
+            const right = y < WIDTH - 1;
+
+            const minX = left ? x - 1 : x;
+            const maxX = right ? x + 1 : x;
+            const minY = up ? y - 1 : y;
+            const maxY = down ? y + 1 : y;
+
+            const _startX = minX * SIZE;
+            const _startY = minY * SIZE;
+            const _widthX = ((maxX - minX) * SIZE) + SIZE - 1;
+            const _widthY = ((maxY - minY) * SIZE) + SIZE - 1;
+
+            theContext.clearRect(_startX, _startY, _widthX, _widthY);
+            for (let _x = minX; _x <= maxX; _x++) {
+                for (let _y = minY; _y <= maxY; _y++) {
+                    if (!board[_y][_x]) continue;
+
+                    const includeUp = _y > 0 && board[_y-1][_x];
+                    const includeDown = _y < HEIGHT - 1 && board[_y+1][_x];
+                    const includeLeft = _x > 0 && board[_y][_x-1];
+                    const includeRight = _x < WIDTH - 1 && board[_y][_x+1];
+
+                    let i = filenames
+                        .filter(e => includeUp === goes.up(e))
+                        .filter(e => includeDown === goes.down(e))
+                        .filter(e => includeLeft === goes.left(e))
+                        .filter(e => includeRight === goes.right(e))[0];
+                    if (!i) continue;
+                    theContext.drawImage(images[i], _x * SIZE, _y * SIZE, SIZE, SIZE)
+                }
+            }
+        }
+
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const i = new Image();
+                i.src = file;
+                i.onload = function() {
+                    resolve(i);
+                };
+                i.onerror = function() {
+                    reject(file);
+                };
+            });
+        }
+    </script>
+</body>
+</html>
