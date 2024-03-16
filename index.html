@@ -4,7 +4,13 @@
     <title>Knotwork</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        @font-face {
+            font-family: 'BioRhyme';
+            src: url('/BioRhyme-Regular.ttf') format('woff2');
+        }
+
         body {
+            font-family: 'BioRhyme';
             margin: 0;
             background-color: #222;
         }
@@ -17,11 +23,12 @@
         }
 
         #button-container button {
+            font-family: 'BioRhyme';
             border: 2px solid #005700;
             background-color: #00aa00;
             border-radius: 4px;
             color: #eee;
-            font-size: 2em;
+            font-size: 2rem;
             width: 30%;
         }
 
@@ -33,10 +40,20 @@
 
         #canvas-container {
             width: 100vw;
-            height: calc(100vh - 70px);
+            height: calc(100vh - 150px);
             display: flex;
-            /* align-items: center; */
             justify-content: center;
+        }
+
+        #link-container {
+            text-align: center;
+            padding: .25rem;
+        }
+
+        #github-link {
+            color: #eee;
+            font-size: 1rem;
+            text-decoration: none;
         }
 
         canvas {
@@ -52,6 +69,10 @@
         <button id="save">save</button>
     </div>
     <div id="canvas-container"></div>
+    <div id="link-container">
+        <a id="github-link"
+            href="https://github.com/super-goose/celtic-knotwork">github.com/super-goose/celtic-knotwork</a>
+    </div>
     <script>
         const knotHistory = (() => {
             const stack = [];
