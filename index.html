@@ -6,22 +6,30 @@
     <style>
         body {
             margin: 0;
+            background-color: #222;
         }
 
         div#button-container {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-evenly;
             height: 70px;
         }
 
+        button#undo,
         button#erase {
             border: 2px solid #005700;
             background-color: #00aa00;
             border-radius: 4px;
-            color: black;
+            color: #eee;
             font-size: 2em;
-            width: 50%;
+            width: 30%;
+        }
+
+        button#undo.disabled {
+            border: 2px solid #575757;
+            background-color: #aaaaaa;
+            color: #eee;
         }
 
         div#canvas-container {
@@ -39,16 +47,38 @@
 </head>
 
 <body>
-    <div id="button-container"><button id="erase">erase</button></div>
+    <div id="button-container">
+        <button id="erase">erase</button>
+        <button id="undo" class="disabled">undo</button>
+    </div>
     <div id="canvas-container"></div>
     <script>
+        const knotHistory = (() => {
+            const stack = [];
+            let sizeChangeCallback;
+
+            const push = (snapshot) => {
+                stack.push(JSON.stringify(snapshot));
+                sizeChangeCallback(stack.length);
+            };
+
+            const pop = () => {
+                sizeChangeCallback(stack.length - 1);
+                return JSON.parse(stack.splice(stack.length - 1, 1)[0]);
+            };
+
+            const onSizeChange = (callback) => sizeChangeCallback = callback;
+
+            return { push, pop, onSizeChange };
+        })();
+
         const SIZE = 34;
         let DRAWING = true;
         let MOUSEDOWN = false;
         const WIDTH = Math.floor(window.innerWidth / SIZE);
         const HEIGHT = Math.floor(document.getElementById('canvas-container').offsetHeight / SIZE);
         //Math.floor((window.innerHeight - 70) / SIZE) - 1;
-        const board = (() => {
+        let board = (() => {
             let b = [];
             for (let h = 0; h < HEIGHT; h++) {
                 let row = [];
@@ -80,6 +110,9 @@
         document.getElementById('canvas-container').appendChild(theCanvas);
         let theContext = theCanvas.getContext('2d');
         let theButton = document.getElementById('erase');
+        let theOtherButton = document.getElementById('undo');
+
+        console.log(knotHistory);
 
         Promise.all(filenames.map(f => {
             return loadImage(`/${f}.png`);
@@ -107,6 +140,7 @@
 
 
             theCanvas.addEventListener('mousedown', (e) => {
+                knotHistory.push(board)
                 MOUSEDOWN = true;
 
                 const rect = theCanvas.getBoundingClientRect();
@@ -148,9 +182,28 @@
                 }));
                 e.preventDefault();
             }, false);
+
             theButton.addEventListener('click', () => {
                 DRAWING = !DRAWING;
                 theButton.innerHTML = DRAWING ? 'erase' : 'draw';
+            })
+
+            knotHistory.onSizeChange((amount) => {
+                if (amount) {
+                    theOtherButton.classList.remove('disabled');
+                } else {
+                    theOtherButton.classList.add('disabled');
+                }
+            });
+
+            theOtherButton.addEventListener('click', () => {
+                console.log('is it happening here???')
+                if (theOtherButton.classList.contains('disabled')) {
+                    return;
+                }
+                board = knotHistory.pop();
+                theContext.clearRect(0, 0, WIDTH * SIZE, HEIGHT * SIZE)
+                shoreUpCanvas()
             })
         })
 
@@ -163,20 +216,7 @@
                         continue;
                     }
 
-                    // copied from inside nested for loops in drawKnotsNear()
-                    const includeUp = y > 0 && board[y - 1][x];
-                    const includeDown = y < HEIGHT - 1 && board[y + 1][x];
-                    const includeLeft = x > 0 && board[y][x - 1];
-                    const includeRight = x < WIDTH - 1 && board[y][x + 1];
-
-                    let i = filenames
-                        .filter(e => includeUp === goes.up(e))
-                        .filter(e => includeDown === goes.down(e))
-                        .filter(e => includeLeft === goes.left(e))
-                        .filter(e => includeRight === goes.right(e))[0];
-                    if (!i) continue;
-                    theContext.drawImage(images[i], x * SIZE, y * SIZE, SIZE, SIZE)
-
+                    drawCorrectKnotTile(x, y);
                 }
             }
         }
@@ -210,20 +250,28 @@
                 for (let _y = minY; _y <= maxY; _y++) {
                     if (!board[_y][_x]) continue;
 
-                    const includeUp = _y > 0 && board[_y - 1][_x];
-                    const includeDown = _y < HEIGHT - 1 && board[_y + 1][_x];
-                    const includeLeft = _x > 0 && board[_y][_x - 1];
-                    const includeRight = _x < WIDTH - 1 && board[_y][_x + 1];
-
-                    let i = filenames
-                        .filter(e => includeUp === goes.up(e))
-                        .filter(e => includeDown === goes.down(e))
-                        .filter(e => includeLeft === goes.left(e))
-                        .filter(e => includeRight === goes.right(e))[0];
-                    if (!i) continue;
-                    theContext.drawImage(images[i], _x * SIZE, _y * SIZE, SIZE, SIZE)
+                    drawCorrectKnotTile(_x, _y)
                 }
             }
+        }
+
+        /**
+         * @description figure out the appropriate tile to draw, then draw it; NOTE: does not clear current tile
+         */
+        function drawCorrectKnotTile(x, y) {
+            const includeUp = y > 0 && board[y - 1][x];
+            const includeDown = y < HEIGHT - 1 && board[y + 1][x];
+            const includeLeft = x > 0 && board[y][x - 1];
+            const includeRight = x < WIDTH - 1 && board[y][x + 1];
+
+            let i = filenames
+                .filter(e => includeUp === goes.up(e))
+                .filter(e => includeDown === goes.down(e))
+                .filter(e => includeLeft === goes.left(e))
+                .filter(e => includeRight === goes.right(e))[0];
+            if (!i) return;
+            theContext.drawImage(images[i], x * SIZE, y * SIZE, SIZE, SIZE)
+
         }
 
         function loadImage(file) {
