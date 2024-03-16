@@ -9,15 +9,14 @@
             background-color: #222;
         }
 
-        div#button-container {
+        #button-container {
             display: flex;
             align-items: center;
             justify-content: space-evenly;
             height: 70px;
         }
 
-        button#undo,
-        button#erase {
+        #button-container button {
             border: 2px solid #005700;
             background-color: #00aa00;
             border-radius: 4px;
@@ -26,13 +25,13 @@
             width: 30%;
         }
 
-        button#undo.disabled {
+        #undo.disabled {
             border: 2px solid #575757;
             background-color: #aaaaaa;
             color: #eee;
         }
 
-        div#canvas-container {
+        #canvas-container {
             width: 100vw;
             height: calc(100vh - 70px);
             display: flex;
@@ -50,6 +49,7 @@
     <div id="button-container">
         <button id="erase">erase</button>
         <button id="undo" class="disabled">undo</button>
+        <button id="save">save</button>
     </div>
     <div id="canvas-container"></div>
     <script>
@@ -111,6 +111,7 @@
         let theContext = theCanvas.getContext('2d');
         let theButton = document.getElementById('erase');
         let theOtherButton = document.getElementById('undo');
+        let theSaveButton = document.getElementById('save');
 
         console.log(knotHistory);
 
@@ -119,9 +120,6 @@
         })).then(img => {
             const l = img.length;
             for (let i = 0; i < l; i++) {
-                // const x = (i % 12) * 17;
-                // const y = Math.floor((i * 17) / 204) * 17;
-                // theContext.drawImage(img[i], x, y);
                 images[filenames[i]] = img[i];
             }
         }).then(() => {
@@ -197,14 +195,20 @@
             });
 
             theOtherButton.addEventListener('click', () => {
-                console.log('is it happening here???')
                 if (theOtherButton.classList.contains('disabled')) {
                     return;
                 }
                 board = knotHistory.pop();
                 theContext.clearRect(0, 0, WIDTH * SIZE, HEIGHT * SIZE)
                 shoreUpCanvas()
-            })
+            });
+
+            theSaveButton.addEventListener('click', () => {
+                const save = document.createElement('a');
+                save.setAttribute('download', 'celtic-knotwork.png');
+                save.setAttribute('href', theCanvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
+                save.click();
+            });
         })
 
         function shoreUpCanvas() {
