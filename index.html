@@ -2,7 +2,8 @@
 
 <head>
     <title>Knotwork</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#005700" />
     <style>
         @font-face {
             font-family: 'BioRhyme';
@@ -98,7 +99,6 @@
         let MOUSEDOWN = false;
         const WIDTH = Math.floor(window.innerWidth / SIZE);
         const HEIGHT = Math.floor(document.getElementById('canvas-container').offsetHeight / SIZE);
-        //Math.floor((window.innerHeight - 70) / SIZE) - 1;
         let board = (() => {
             let b = [];
             for (let h = 0; h < HEIGHT; h++) {
@@ -134,8 +134,6 @@
         let theOtherButton = document.getElementById('undo');
         let theSaveButton = document.getElementById('save');
 
-        console.log(knotHistory);
-
         Promise.all(filenames.map(f => {
             return loadImage(`/${f}.png`);
         })).then(img => {
@@ -163,8 +161,6 @@
                 MOUSEDOWN = true;
 
                 const rect = theCanvas.getBoundingClientRect();
-                // const x = Math.floor(e.offsetX / SIZE);
-                // const y = Math.floor(e.offsetY / SIZE);
                 const x = Math.floor((e.clientX - rect.left) / SIZE);
                 const y = Math.floor((e.clientY - rect.top) / SIZE);
 
