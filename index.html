@@ -1,313 +1,339 @@
 <html>
 
 <head>
-    <title>Knotwork</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#005700" />
-    <style>
-        @font-face {
-            font-family: 'BioRhyme';
-            src: url('/BioRhyme-Regular.ttf') format('woff2');
-        }
+  <title>Knotwork</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#005700" />
+  <style>
+    @font-face {
+      font-family: 'BioRhyme';
+      src: url('/BioRhyme-Regular.ttf') format('woff2');
+    }
 
-        body {
-            font-family: 'BioRhyme';
-            margin: 0;
-            background-color: #222;
-        }
+    body {
+      font-family: 'BioRhyme';
+      margin: 0;
+      background-color: #222;
+    }
 
-        #button-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-evenly;
-            height: 70px;
-        }
+    #button-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+      height: 70px;
+    }
 
-        #button-container button {
-            font-family: 'BioRhyme';
-            border: 2px solid #005700;
-            background-color: #00aa00;
-            border-radius: 4px;
-            color: #eee;
-            font-size: 2rem;
-            width: 30%;
-        }
+    #button-container button {
+      font-family: 'BioRhyme';
+      border: 2px solid #005700;
+      background-color: #00aa00;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 2rem;
+      width: 30%;
+    }
 
-        #undo.disabled {
-            border: 2px solid #575757;
-            background-color: #aaaaaa;
-            color: #eee;
-        }
+    #undo.disabled {
+      border: 2px solid #575757;
+      background-color: #aaaaaa;
+      color: #eee;
+    }
 
-        #canvas-container {
-            width: 100vw;
-            height: calc(100vh - 150px);
-            display: flex;
-            justify-content: center;
-        }
+    #canvas-container {
+      width: 100vw;
+      height: calc(100vh - 150px);
+      display: flex;
+      justify-content: center;
+    }
 
-        #link-container {
-            text-align: center;
-            padding: .25rem;
-        }
+    #link-container {
+      text-align: center;
+      padding: .25rem;
+    }
 
-        #github-link {
-            color: #eee;
-            font-size: 1rem;
-            text-decoration: none;
-        }
+    #github-link {
+      color: #eee;
+      font-size: 1rem;
+      text-decoration: none;
+    }
 
-        canvas {
-            border: 1px solid black;
-        }
-    </style>
+    canvas {
+      border: 1px solid black;
+    }
+  </style>
 </head>
 
 <body>
-    <div id="button-container">
-        <button id="erase">erase</button>
-        <button id="undo" class="disabled">undo</button>
-        <button id="save">save</button>
-    </div>
-    <div id="canvas-container"></div>
-    <div id="link-container">
-        <a id="github-link"
-            href="https://github.com/super-goose/celtic-knotwork">github.com/super-goose/celtic-knotwork</a>
-    </div>
-    <script>
-        const knotHistory = (() => {
-            const stack = [];
-            let sizeChangeCallback;
+  <div id="button-container">
+    <button id="erase">erase</button>
+    <button id="undo" class="disabled">undo</button>
+    <button id="save">save</button>
+  </div>
+  <div id="canvas-container"></div>
+  <div id="link-container">
+    <a id="github-link" href="https://github.com/super-goose/celtic-knotwork">github.com/super-goose/celtic-knotwork</a>
+  </div>
+  <script>
+    // Application set up
+    const knotHistory = (() => {
+      const stack = [];
+      let sizeChangeCallback;
 
-            const push = (snapshot) => {
-                stack.push(JSON.stringify(snapshot));
-                sizeChangeCallback(stack.length);
-            };
+      const push = (snapshot) => {
+        stack.push(JSON.stringify(snapshot));
+        sizeChangeCallback(stack.length);
+      };
 
-            const pop = () => {
-                sizeChangeCallback(stack.length - 1);
-                return JSON.parse(stack.splice(stack.length - 1, 1)[0]);
-            };
+      const pop = () => {
+        sizeChangeCallback(stack.length - 1);
+        return JSON.parse(stack.splice(stack.length - 1, 1)[0]);
+      };
 
-            const onSizeChange = (callback) => sizeChangeCallback = callback;
+      const onSizeChange = (callback) => sizeChangeCallback = callback;
 
-            return { push, pop, onSizeChange };
-        })();
+      return { push, pop, onSizeChange };
+    })();
 
-        const SIZE = 34;
-        let DRAWING = true;
-        let MOUSEDOWN = false;
-        const WIDTH = Math.floor(window.innerWidth / SIZE);
-        const HEIGHT = Math.floor(document.getElementById('canvas-container').offsetHeight / SIZE);
-        let board = (() => {
-            let b = [];
-            for (let h = 0; h < HEIGHT; h++) {
-                let row = [];
-                for (let w = 0; w < WIDTH; w++) {
-                    row.push(false);
-                }
-                b.push(row);
-            }
-            return b;
-        })();
+    const SIZE = 34;
+    let DRAWING = true;
+    let MOUSEDOWN = false;
+    const WIDTH = Math.floor(window.innerWidth / SIZE);
+    const HEIGHT = Math.floor(document.getElementById('canvas-container').offsetHeight / SIZE);
+    let board = (() => {
+      let b = [];
+      for (let h = 0; h < HEIGHT; h++) {
+        let row = [];
+        for (let w = 0; w < WIDTH; w++) {
+          row.push(false);
+        }
+        b.push(row);
+      }
+      return b;
+    })();
 
-        const images = {};
-        const goes = {
-            up: n => n.includes('1') && n.includes('2'),
-            right: n => n.includes('3') && n.includes('4'),
-            down: n => n.includes('5') && n.includes('6'),
-            left: n => n.includes('7') && n.includes('8'),
+    let theCanvas = document.createElement('canvas');
+    theCanvas.width = WIDTH * SIZE;
+    theCanvas.height = HEIGHT * SIZE;
+    document.getElementById('canvas-container').appendChild(theCanvas);
+
+    // Logic defined 
+
+    /**
+     * @description this draws all the knots correctly, and prevents some
+     * artifacts from where the user might have been drawing too fast for the
+     * canvas to keep up drawing. It is here because I was originally getting
+     * cells that opened up to neighbors that were blank.
+     */
+    function shoreUpCanvas() {
+      for (let y = 0, yMax = board.length; y < yMax; y++) {
+        for (let x = 0, xMax = board[x].length; x < xMax; x++) {
+          theContext.clearRect(x * SIZE, y * SIZE, SIZE, SIZE);
+
+          if (!board[y][x]) {
+            continue;
+          }
+
+          drawCorrectKnotTile(x, y);
+        }
+      }
+    }
+
+    /**
+     * @description set cells that have been drawn
+     */
+    function handleDrawEvent(x, y) {
+      if (!board[y] || board[y][x] !== !DRAWING) return;
+
+      board[y][x] = DRAWING;
+      drawKnotsNear(x, y)
+    }
+
+    function drawKnotsNear(x, y) {
+      const up = y > 0;
+      const down = y < HEIGHT - 1;
+      const left = x > 0;
+      const right = y < WIDTH - 1;
+
+      const minX = left ? x - 1 : x;
+      const maxX = right ? x + 1 : x;
+      const minY = up ? y - 1 : y;
+      const maxY = down ? y + 1 : y;
+
+      const _startX = minX * SIZE;
+      const _startY = minY * SIZE;
+      const _widthX = ((maxX - minX) * SIZE) + SIZE - 1;
+      const _widthY = ((maxY - minY) * SIZE) + SIZE - 1;
+
+      theContext.clearRect(_startX, _startY, _widthX, _widthY);
+      for (let _x = minX; _x <= maxX; _x++) {
+        for (let _y = minY; _y <= maxY; _y++) {
+          if (!board[_y][_x]) continue;
+
+          drawCorrectKnotTile(_x, _y)
+        }
+      }
+    }
+
+    /**
+     * @description figure out the appropriate tile to draw, then draw it;
+     * NOTE: does not clear current tile
+     */
+    function drawCorrectKnotTile(x, y) {
+      const includeUp = y > 0 && board[y - 1][x];
+      const includeDown = y < HEIGHT - 1 && board[y + 1][x];
+      const includeLeft = x > 0 && board[y][x - 1];
+      const includeRight = x < WIDTH - 1 && board[y][x + 1];
+
+      let i = filenames
+        .filter(e => includeUp === goes.up(e))
+        .filter(e => includeDown === goes.down(e))
+        .filter(e => includeLeft === goes.left(e))
+        .filter(e => includeRight === goes.right(e))[0];
+      if (!i) return;
+      theContext.drawImage(images[i], x * SIZE, y * SIZE, SIZE, SIZE)
+
+    }
+
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const i = new Image();
+        i.src = file;
+        i.onload = function () {
+          resolve(i);
         };
-        const filenames = [
-            'ck-13-25-46', 'ck-16-25-38-47', 'ck-17-28', 'ck-35-46',
-            'ck-37-48', 'ck-12', 'ck-35-47-68', 'ck-56',
-            'ck-16-28-57', 'ck-13-24', 'ck-15-26', 'ck-17-24-38',
-            'ck-78', 'ck-34', 'ck-57-68',
-        ];
+        i.onerror = function () {
+          reject(file);
+        };
+      });
+    }
 
-        let theCanvas = document.createElement('canvas');
-        theCanvas.width = WIDTH * SIZE;
-        theCanvas.height = HEIGHT * SIZE;
-        document.getElementById('canvas-container').appendChild(theCanvas);
-        let theContext = theCanvas.getContext('2d');
-        let theButton = document.getElementById('erase');
-        let theOtherButton = document.getElementById('undo');
-        let theSaveButton = document.getElementById('save');
+    /**
+     * @description determine which directions the cell connects with other'
+     * cells
+     */
+    const goes = {
+      up: n => n.includes('1') && n.includes('2'),
+      right: n => n.includes('3') && n.includes('4'),
+      down: n => n.includes('5') && n.includes('6'),
+      left: n => n.includes('7') && n.includes('8'),
+    };
 
-        Promise.all(filenames.map(f => {
-            return loadImage(`/${f}.png`);
-        })).then(img => {
-            const l = img.length;
-            for (let i = 0; i < l; i++) {
-                images[filenames[i]] = img[i];
-            }
-        }).then(() => {
-            theCanvas.addEventListener('mouseup', (e) => {
-                MOUSEDOWN = false;
-                shoreUpCanvas();
-            });
-            theCanvas.addEventListener('mouseout', (e) => {
-                MOUSEDOWN = false;
-                shoreUpCanvas()
-            });
-            theCanvas.addEventListener('touchend', (e) => {
-                theCanvas.dispatchEvent(new MouseEvent('mouseup', {}));
-            });
+    // Load assets and connect logic to UI
 
+    let theContext = theCanvas.getContext('2d');
+    let theButton = document.getElementById('erase');
+    let theOtherButton = document.getElementById('undo');
+    let theSaveButton = document.getElementById('save');
 
+    const images = {};
+    const filenames = [
+      'ck-13-25-46', 'ck-16-25-38-47', 'ck-17-28', 'ck-35-46',
+      'ck-37-48', 'ck-12', 'ck-35-47-68', 'ck-56',
+      'ck-16-28-57', 'ck-13-24', 'ck-15-26', 'ck-17-24-38',
+      'ck-78', 'ck-34', 'ck-57-68',
+    ];
 
-            theCanvas.addEventListener('mousedown', (e) => {
-                knotHistory.push(board)
-                MOUSEDOWN = true;
+    Promise.all(filenames.map(f => {
+      return loadImage(`/${f}.png`);
+    })).then(img => {
+      for (let i = 0; i < img.length; i++) {
+        images[filenames[i]] = img[i];
+      }
+    }).then(() => {
+      /**
+       * actions that should trigger a redraw
+       */
+      theCanvas.addEventListener('mouseup', (e) => {
+        MOUSEDOWN = false;
+        shoreUpCanvas();
+      });
+      theCanvas.addEventListener('mouseout', (e) => {
+        MOUSEDOWN = false;
+        shoreUpCanvas()
+      });
+      theCanvas.addEventListener('touchend', (e) => {
+        theCanvas.dispatchEvent(new MouseEvent('mouseup', {}));
+      });
 
-                const rect = theCanvas.getBoundingClientRect();
-                const x = Math.floor((e.clientX - rect.left) / SIZE);
-                const y = Math.floor((e.clientY - rect.top) / SIZE);
+      /**
+       * actions that should initiate drawing logic
+       */
+      theCanvas.addEventListener('mousedown', (e) => {
+        knotHistory.push(board)
+        MOUSEDOWN = true;
 
-                handleEvent(x, y);
-            });
-            theCanvas.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
+        const rect = theCanvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - rect.left) / SIZE);
+        const y = Math.floor((e.clientY - rect.top) / SIZE);
 
-                theCanvas.dispatchEvent(new MouseEvent('mousedown', {
-                    clientX: touch.clientX,
-                    clientY: touch.clientY,
-                }));
-                e.preventDefault();
-            }, false);
+        handleDrawEvent(x, y);
+      });
+      theCanvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
 
+        theCanvas.dispatchEvent(new MouseEvent('mousedown', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        }));
+        e.preventDefault();
+      }, false);
 
+      /**
+       * actually drawing
+       */
+      theCanvas.addEventListener('mousemove', (e) => {
+        if (!MOUSEDOWN) return;
 
-            theCanvas.addEventListener('mousemove', (e) => {
-                if (!MOUSEDOWN) return;
+        const rect = theCanvas.getBoundingClientRect();
 
-                const rect = theCanvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - rect.left) / SIZE);
+        const y = Math.floor((e.clientY - rect.top) / SIZE);
 
-                const x = Math.floor((e.clientX - rect.left) / SIZE);
-                const y = Math.floor((e.clientY - rect.top) / SIZE);
+        handleDrawEvent(x, y);
+      });
+      theCanvas.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
 
-                handleEvent(x, y);
-            });
-            theCanvas.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
+        theCanvas.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        }));
+        e.preventDefault();
+      }, false);
 
-                theCanvas.dispatchEvent(new MouseEvent('mousemove', {
-                    clientX: touch.clientX,
-                    clientY: touch.clientY,
-                }));
-                e.preventDefault();
-            }, false);
+      /**
+       * button click handlers
+       */
+      theButton.addEventListener('click', () => {
+        DRAWING = !DRAWING;
+        theButton.innerHTML = DRAWING ? 'erase' : 'draw';
+      })
 
-            theButton.addEventListener('click', () => {
-                DRAWING = !DRAWING;
-                theButton.innerHTML = DRAWING ? 'erase' : 'draw';
-            })
-
-            knotHistory.onSizeChange((amount) => {
-                if (amount) {
-                    theOtherButton.classList.remove('disabled');
-                } else {
-                    theOtherButton.classList.add('disabled');
-                }
-            });
-
-            theOtherButton.addEventListener('click', () => {
-                if (theOtherButton.classList.contains('disabled')) {
-                    return;
-                }
-                board = knotHistory.pop();
-                theContext.clearRect(0, 0, WIDTH * SIZE, HEIGHT * SIZE)
-                shoreUpCanvas()
-            });
-
-            theSaveButton.addEventListener('click', () => {
-                const save = document.createElement('a');
-                save.setAttribute('download', 'celtic-knotwork.png');
-                save.setAttribute('href', theCanvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
-                save.click();
-            });
-        })
-
-        function shoreUpCanvas() {
-            for (let y = 0, yMax = board.length; y < yMax; y++) {
-                for (let x = 0, xMax = board[x].length; x < xMax; x++) {
-                    theContext.clearRect(x * SIZE, y * SIZE, SIZE, SIZE);
-
-                    if (!board[y][x]) {
-                        continue;
-                    }
-
-                    drawCorrectKnotTile(x, y);
-                }
-            }
+      knotHistory.onSizeChange((amount) => {
+        if (amount) {
+          theOtherButton.classList.remove('disabled');
+        } else {
+          theOtherButton.classList.add('disabled');
         }
+      });
 
-        function handleEvent(x, y) {
-
-            if (!board[y] || board[y][x] !== !DRAWING) return;
-
-            board[y][x] = DRAWING;
-            drawKnotsNear(x, y)
+      theOtherButton.addEventListener('click', () => {
+        if (theOtherButton.classList.contains('disabled')) {
+          return;
         }
+        board = knotHistory.pop();
+        theContext.clearRect(0, 0, WIDTH * SIZE, HEIGHT * SIZE)
+        shoreUpCanvas()
+      });
 
-        function drawKnotsNear(x, y) {
-            const up = y > 0;
-            const down = y < HEIGHT - 1;
-            const left = x > 0;
-            const right = y < WIDTH - 1;
-
-            const minX = left ? x - 1 : x;
-            const maxX = right ? x + 1 : x;
-            const minY = up ? y - 1 : y;
-            const maxY = down ? y + 1 : y;
-
-            const _startX = minX * SIZE;
-            const _startY = minY * SIZE;
-            const _widthX = ((maxX - minX) * SIZE) + SIZE - 1;
-            const _widthY = ((maxY - minY) * SIZE) + SIZE - 1;
-
-            theContext.clearRect(_startX, _startY, _widthX, _widthY);
-            for (let _x = minX; _x <= maxX; _x++) {
-                for (let _y = minY; _y <= maxY; _y++) {
-                    if (!board[_y][_x]) continue;
-
-                    drawCorrectKnotTile(_x, _y)
-                }
-            }
-        }
-
-        /**
-         * @description figure out the appropriate tile to draw, then draw it; NOTE: does not clear current tile
-         */
-        function drawCorrectKnotTile(x, y) {
-            const includeUp = y > 0 && board[y - 1][x];
-            const includeDown = y < HEIGHT - 1 && board[y + 1][x];
-            const includeLeft = x > 0 && board[y][x - 1];
-            const includeRight = x < WIDTH - 1 && board[y][x + 1];
-
-            let i = filenames
-                .filter(e => includeUp === goes.up(e))
-                .filter(e => includeDown === goes.down(e))
-                .filter(e => includeLeft === goes.left(e))
-                .filter(e => includeRight === goes.right(e))[0];
-            if (!i) return;
-            theContext.drawImage(images[i], x * SIZE, y * SIZE, SIZE, SIZE)
-
-        }
-
-        function loadImage(file) {
-            return new Promise((resolve, reject) => {
-                const i = new Image();
-                i.src = file;
-                i.onload = function () {
-                    resolve(i);
-                };
-                i.onerror = function () {
-                    reject(file);
-                };
-            });
-        }
-    </script>
+      theSaveButton.addEventListener('click', () => {
+        const save = document.createElement('a');
+        save.setAttribute('download', 'celtic-knotwork.png');
+        save.setAttribute('href', theCanvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
+        save.click();
+      });
+    })
+  </script>
 </body>
 
 </html>
